@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Image Preview</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta charset="utf-8" />
+    <link rel="shortcut icon" href="./assets/favicon.ico" type="image/x-icon" />
+
+    <style>
+      .image-preview {
+        width: 300px;
+        min-height: 100px;
+        border: 2px solid #dddddd;
+        margin-top: 15px;
+
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+        color: #cccccc;
+      }
+      .designrow {
+        display: inline-block;
+      }
+
+      .design {
+        width: 300px;
+        margin-left: 20px;
+        margin-right: 20px;
+        margin-bottom: 20px;
+        display: inline-block;
+      }
+
+      .design img {
+        width: 100%;
+        height: 100%;
+      }
+      .image-preview__image {
+        display: none;
+        width: 100%;
+      }
+      .image-preview__image2 {
+        display: none;
+        width: 100%;
+      }
+    </style>
+  </head>
+
+  <body>
+    <h1>Image Preview on File Uploads</h1>
+    <form class="form" id="myForm">
+      <div id="designrow">
+        <div class="design">
+          <input type="file" name="target" id="inpFile" />
+          <div class="image-preview" id="imagePreview">
+            <img src="" alt="Image Preview" class="image-preview__image" />
+            <span class="image-preview__default-text">Image Preview</span>
+          </div>
+        </div>
+
+        <div class="design">
+          <input type="file" name="faces" id="inpFile2" />
+          <div class="image-preview" id="imagePreview2">
+            <img src="" alt="Image Preview" class="image-preview__image2" />
+            <span class="image-preview__default-text2">Image Preview</span>
+          </div>
+        </div>
+      </div>
+      <button type="submit">Check the similarity</button>
+    </form>
+    <dialog id="dialog">
+      <form method="dialog">
+        <div id="myData"></div>
+        <div id="myData2"></div>
+
+        <button id="Close">Close</button>
+      </form>
+    </dialog>
+    <button id="getData" onclick="GetData()">Get Data</button>
+
+    <script>
+      const uri = "http://localhost:8000/";
+      const initDetails = {
+        method: "get",
+        headers: {
+          "Content-Type": "application/json; charset=utf-8",
+        },
+      };
+
+      function GetData() {
+        fetch(uri, initDetails)
+          .then((response) => {
+            if (response.status !== 200) {
+              console.log(
+                "Looks like there was a problem. Status Code: " +
+                  response.status
+              );
+              return;
+            }
+
+            console.log(response.headers.get("Content-Type"));
+            return response.json();
+          })
+          .then((myJson) => {
+            console.log(JSON.stringify(myJson));
+          })
+          .catch((err) => {
+            console.log("Fetch Error :-S", err);
+          });
+      }
+    </script>
+
+    <script>
+      const myForm = document.getElementById("myForm");
+      var dialog = document.getElementById("dialog");
+      var closeBtn = document.getElementById('Close');
+
+      closeBtn.addEventListener('click', function(e) {
+        e.preventDefault();
+        console.log("Close");
+        window.location.reload()
+        // Close the dialog.
+        dialog.close();
+      });
+      myForm.addEventListener("submit", function (e) {
+        e.preventDefault();
+        const formData = new FormData(this);
+        fetch("http://192.168.0.249:8000/api/v1/compare_faces", {
+          method: "post",
+          body: formData,
+        })
+          .then(function (response) {
+            return response.json();
+          })
+          .then(function (myJson2) {
+            myJson2 = JSON.parse(JSON.stringify(myJson2));
+            appendData(myJson2);
+          })
+          .catch(function (error) {
+            console.error(error);
+          });
+
+        fetch("http://192.168.0.249:8000/api/v1/age_gender", {
+          method: "post",
+          body: formData,
+        })
+          .then(function (response) {
+            return response.json();
+          })
+          .then(function (myJson2) {
+            myJson2 = JSON.parse(JSON.stringify(myJson2));
+            appendData2(myJson2);
+          })
+          .catch(function (error) {
+            console.error(error);
+          });
+      });
+
+      var div = document.createElement("div");
+      var div2 = document.createElement("div");
+      var img = document.createElement("img");
+      var img2 = document.createElement("img");
+
+      function appendData(data) {
+        var mainContainer = document.getElementById("myData");
+        for (var i = 0; i < data.length; i++) {
+          if (data[i].result == "True")
+            div.innerHTML =
+              "It is the same person <br/>" +
+              "Probability: " +
+              (1 - parseFloat(data[i].distance)) * 100 +
+              "%";
+          else if (data[i].result == "False")
+            div.innerHTML =
+              "It is a different person <br/>" +
+              "Probability: " +
+              parseFloat(data[i].distance) * 100 +
+              "%";
+          else div.innerHTML = "Many Faces or No Faces";
+          mainContainer.appendChild(div);
+        }
+      }
+      function appendData2(data) {
+       
+        var mainContainer = document.getElementById("myData2");
+        img.src = "assets/display/first_face.jpg" ;
+        document.getElementById("myData2").appendChild(img);
+        img2.src = "assets/display/second_face.jpg";
+        document.getElementById("myData2").appendChild(img2);
+        for (var i = 0; i < data.length; i++) {
+          div2.innerHTML =
+            "Gender:" +
+            data[i].gender +
+            "<br/>" +
+            "Age:" +
+            data[i].age +
+            "<br/>" +
+            "Gender2:" +
+            data[i].gender2 +
+            "<br/>" +
+            "Age2:" +
+            data[i].age2;
+          mainContainer.appendChild(div2);
+        }
+        dialog.show();
+      }
+    </script>
+
+    <script>
+      const inpFile = document.getElementById("inpFile");
+      const previewContainer = document.getElementById("imagePreview");
+
+      const previewImage = previewContainer.querySelector(
+        ".image-preview__image"
+      );
+      const previewDefaultText = previewContainer.querySelector(
+        ".image-preview__default-text"
+      );
+
+      const inpFile2 = document.getElementById("inpFile2");
+      const previewContainer2 = document.getElementById("imagePreview2");
+      const previewImage2 = previewContainer2.querySelector(
+        ".image-preview__image2"
+      );
+      const previewDefaultText2 = previewContainer2.querySelector(
+        ".image-preview__default-text2"
+      );
+
+      inpFile2.addEventListener("change", function () {
+        const file = this.files[0];
+
+        if (file) {
+          const reader = new FileReader();
+
+          previewDefaultText2.style.display = "none";
+          previewImage2.style.display = "block";
+
+          reader.addEventListener("load", function () {
+            previewImage2.setAttribute("src", this.result);
+          });
+
+          reader.readAsDataURL(file);
+          console.log(file);
+        } else {
+          previewDefaultText2.style.display = null;
+          previewImage2.style.display = null;
+          previewImage2.setAttribute("src", "");
+        }
+      });
+
+      inpFile.addEventListener("change", function () {
+        const file = this.files[0];
+
+        if (file) {
+          const reader = new FileReader();
+
+          previewDefaultText.style.display = "none";
+          previewImage.style.display = "block";
+
+          reader.addEventListener("load", function () {
+            previewImage.setAttribute("src", this.result);
+          });
+
+          reader.readAsDataURL(file);
+          console.log(file);
+        } else {
+          previewDefaultText.style.display = null;
+          previewImage.style.display = null;
+          previewImage.setAttribute("src", "");
+        }
+      });
+    </script>
+  </body>
+</html>
